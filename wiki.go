@@ -2,11 +2,14 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"regexp"
+
+	"github.com/russross/blackfriday"
 )
 
 type Page struct {
@@ -26,6 +29,15 @@ var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 func (p *Page) save() error {
 	filename := p.Title + ".txt"
 	return ioutil.WriteFile("data/"+filename, p.Body, 0600)
+}
+
+func loadMarkdown(title string) (*Page, error) {
+	filename := title + ".md"
+	body, err := ioutil.ReadFile("data/" + filename)
+	if err != nil {
+		return nil, err
+	}
+	return &Page{Title: title, Body: body}, nil
 }
 
 func loadPage(title string) (*Page, error) {
@@ -51,6 +63,16 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+
+func markDowner(args ...interface{}) template.HTML {
+	s := blackfriday.MarkdownBasic([]byte(fmt.Sprintf("%s", args...)))
+
+}
+
+func renderMarkdown(w http.ResponseWriter, p *Page) {
+	mdHtml := template.HTML(blackfriday.MarkdownBasic(p.Body))
+	tmpl := template.Must(templlList.New("md.html").Funcs(templ))
 }
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
